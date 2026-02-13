@@ -4,7 +4,7 @@
 
 - **Hunt Name:** The Helpdesk Deception
 - **Author:** Thong Huynh
-- **Date:** 2026-1-29
+- **Date:** 2026-01-29
 - **Environment:** Microsoft Sentinel + Defender for Endpoint
 - **Hunt Type:** Hypothesis-Driven Threat Hunt
 - **Severity:** Medium (Suspicious Activity Under Review)
