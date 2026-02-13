@@ -4,7 +4,7 @@
 
 * **Hunt Name:** CorpHealth: Traceback
 * **Author:** Thong Huynh
-* **Date:** 2026-02-13
+* **Date:** 2026-01-31
 * **Environment:** Microsoft Defender for Endpoint (MDE) + Azure diagnostic/device logs (via Sentinel/LAW)
 * **Hunt Type:** Timeline-driven, hypothesis-driven threat hunt (privileged account misuse)
 * **Severity:** High (Confirmed unauthorized interactive activity and C2 tooling)
