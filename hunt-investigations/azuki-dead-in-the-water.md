@@ -4,7 +4,7 @@
 
 - **Hunt Name:** Dead in the Water - Azuki Ransomware
 - **Author:** Thong Huynh
-- **Date:** 2025-11-27
+- **Date:** 2026-02-12
 - **Environment:** Microsoft Defender for Endpoint
 - **Hunt Type:** Hypothesis-Driven Threat Hunt
 - **Severity:** Critical (Confirmed Ransomware Deployment)
