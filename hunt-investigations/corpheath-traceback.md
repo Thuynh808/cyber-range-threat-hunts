@@ -1,4 +1,4 @@
-![corphealth0](images/corphealth0.gif)
+![corphealth0](images/corphealth0.png)
 
 # Threat Hunt Report - CorpHealth: Traceback
 
@@ -73,33 +73,22 @@ This hunt followed a **behavior-first timeline reconstruction** approach:
 
 ---
 
-## Investigation Timeline
+## Investigation Sequence
 
-| Timestamp (UTC)             | Event                                                                                                                   |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| 2025-11-23 03:08:31.1849379 | **Earliest suspicious logon** to CH-OPS-WKS02 from `104.164.168.17` using account `chadmin`                             |
-| 2025-11-23 (post-logon)     | First observed post-logon process: `explorer.exe`                                                                       |
-| 2025-11-23 (early session)  | First file opened via GUI: `CH-OPS-WKS02 user-pass.txt`                                                                 |
-| 2025-11-23 (follow-on)      | Recon begins: `ipconfig.exe` executed                                                                                   |
-| 2025-11-23 03:46:08.400686  | **First outbound communication** attributed to `MaintenanceRunner_Distributed.ps1`                                      |
-| 2025-11-23 03:47:21.8529749 | First Application event indicating **ConfigAdjust privilege escalation simulation**                                     |
-| 2025-11-30 01:03:17.6985973 | **Latest successful beacon** (ConnectionSuccess) tied to the maintenance script                                         |
-| 2025-11-xx to 11-xx         | First staging artifact created: `C:\ProgramData\Microsoft\Diagnostics\CorpHealth\inventory_6ECFD4DF.csv`                |
-| 2025-11-xx to 11-xx         | Duplicate staging artifact created: `C:\Users\ops.maintenance\AppData\Local\Temp\CorpHealth\inventory_tmp_6ECFD4DF.csv` |
-| 2025-11-xx to 11-xx         | Registry activity: `HKLM\SYSTEM\ControlSet001\Services\EventLog\Application\CorpHealthAgent` touched/created            |
-| 2025-11-xx to 11-xx         | Scheduled task registry tree created: `HKLM\...\Schedule\TaskCache\Tree\CorpHealth_A65E64`                              |
-| 2025-11-xx to 11-xx         | Run key value created then removed: **RegistryValueName** = `MaintenanceRunner`                                         |
-| 2025-11-xx to 11-xx         | Encoded PowerShell execution decoded to: `Write-Output 'token-6D5E4EE08227'`                                            |
-| 2025-11-xx to 11-xx         | Token privilege modification: **InitiatingProcessId** `4888`, token SID `S-1-5-21-1605642021-30596605-784192815-1000`   |
-| 2025-11-xx to 11-xx         | Tool ingress: executable dropped `revshell.exe` after `curl.exe` activity                                               |
-| 2025-11-xx to 11-xx         | External download source (ngrok): `unresuscitating-donnette-smothery.ngrok-free.dev`                                    |
-| 2025-11-xx to 11-xx         | Execution of unsigned binary: parent process `explorer.exe`                                                             |
-| 2025-11-xx to 11-xx         | Outbound attempts by `revshell.exe` to `13.228.171.119:11746`                                                           |
-| 2025-11-xx to 11-xx         | Persistence: Startup folder placement `C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\revshell.exe`       |
+| Stage                                   | Event                                                                                                           |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Initial Access                          | Suspicious logon to **CH-OPS-WKS02** from a public IP using account `chadmin`                                   |
+| Post-Logon Discovery                    | Interactive session begins (GUI activity, file viewing, basic host recon)                                       |
+| Beaconing                               | `MaintenanceRunner_Distributed.ps1` initiates outbound communication and later achieves a successful connection |
+| Staging                                 | Inventory artifacts are written to CorpHealth-related directories, including a duplicate working copy in Temp   |
+| Credential and System Tampering Signals | Registry activity under HKLM consistent with credential/agent manipulation patterns                             |
+| Persistence Attempts                    | Scheduled task artifacts observed, plus short-lived Run key persistence behavior                                |
+| Privilege Manipulation                  | ConfigAdjust and token modification telemetry observed (token privileges adjusted)                              |
+| Tool Ingress                            | `curl.exe` retrieves an unsigned payload from a dynamic tunnel domain                                           |
+| Execution and C2                        | Payload executes and attempts outbound connectivity to an external IP on a nonstandard port                     |
+| Persistence via Startup                 | Executable is copied into a Startup folder path for logon execution                                             |
+| Attribution Pivots                      | Remote session metadata and internal pivot indicators identify probable operator access path                    |
 
-> Note: Several mid-chain timestamps were determined during the hunt but are not re-listed here until you paste the supporting KQL outputs into the Appendix.
-
----
 
 ## Key Findings
 
@@ -277,95 +266,696 @@ This hunt followed a **behavior-first timeline reconstruction** approach:
 
 ---
 
-<details>
-<summary><h2><strong>Appendix: Supporting Queries and Evidence (click to expand)</strong></h2></summary>
-
-Paste your KQL and screenshots here. Recommended structure (matches your template style):
-
-### Finding: Unique Maintenance Script Identification (Flag 1)
-
-```kql
-// TODO: paste query
-```
-
-![corphealth1](images/corphealth1.png)
-
----
-
-### Finding: First Outbound Communication Timestamp (Flag 2)
-
-```kql
-// TODO: paste query
-```
-
-![corphealth2](images/corphealth2.png)
-
----
-
-### Finding: Beacon Destination and Success (Flags 3–4)
-
-```kql
-// TODO: paste query
-```
-
-![corphealth3](images/corphealth3.png)
-
----
-
-### Finding: Staged Artifacts + Hash Verification (Flags 5–7)
-
-```kql
-// TODO: paste query
-```
-
-![corphealth4](images/corphealth4.png)
-
----
-
-### Finding: Registry + Scheduled Task + Run Key Persistence (Flags 8–10)
-
-```kql
-// TODO: paste query
-```
-
-![corphealth5](images/corphealth5.png)
-
----
-
-### Finding: Privilege Escalation and Token Modification (Flags 11, 14–15)
-
-```kql
-// TODO: paste query
-```
-
-![corphealth6](images/corphealth6.png)
-
----
-
-### Finding: Ingress Tool Transfer, Execution, C2, and Startup Persistence (Flags 16–20)
-
-```kql
-// TODO: paste query
-```
-
-![corphealth7](images/corphealth7.png)
-
----
-
-### Finding: Remote Session Source + First Logon Reconstruction (Flags 21–31)
-
-```kql
-// TODO: paste query
-```
-
-![corphealth8](images/corphealth8.png)
-
-</details>
-
----
-
 ## Hunt Closure & Analyst Synthesis
 
 The CorpHealth activity on **CH-OPS-WKS02** was not consistent with approved automation. The sequence demonstrates a clear intrusion chain: an initial suspicious logon (`chadmin`), early recon and credential file access, off-hours maintenance-script beaconing, staged diagnostic exports, registry manipulation and ephemeral persistence testing, token privilege modification, external tool ingress via **ngrok**, execution of an unsigned reverse-shell binary, outbound attempts to a nonstandard port, and persistence via Startup folder placement.
 
 This progressed beyond “Operations Activity Review” into **confirmed malicious tradecraft**, with actionable IOCs and concrete containment priorities.
+
+<details>
+<summary><h2><strong>Appendix: Supporting Queries and Evidence (click to expand)</strong></h2></summary>
+
+The following sections document the investigative queries used during the hunt, along with the corresponding evidence observed in endpoint telemetry to support each finding.
+
+---
+
+### Finding: Scoped Endpoint Identification (Flag 0)
+
+```kql
+let start = datetime(2025-11-05);
+let end   = datetime(2025-11-25);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where tolower(AccountName) !in ("system", "local service", "network service")
+| where DeviceName has "ch"
+| where InitiatingProcessCommandLine has "powershell" or ProcessCommandLine has "powershell"
+| summarize devicee = count() by DeviceName
+```
+
+**Evidence observed:**
+A single workstation surfaced with concentrated PowerShell-linked activity during the scoped mid-November window, allowing CH-OPS-WKS02 to be isolated as the primary device of interest.
+
+**Why it matters:**
+Correctly anchoring the investigation on the right endpoint prevents false narrative building and keeps all subsequent pivots consistent across process, network, file, and registry telemetry.
+
+---
+
+### Finding: Unique Maintenance Script on CH-OPS-WKS02 (Flag 1)
+
+```kql
+let start = datetime(2025-11-20);
+let end   = datetime(2025-11-24);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where tolower(AccountName) !in ("system", "local service", "network service")
+| where InitiatingProcessCommandLine has "powershell" or ProcessCommandLine has "powershell"
+| where ProcessCommandLine has "MaintenanceRunner_Distributed.ps1"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+```
+
+**Evidence observed:**
+`MaintenanceRunner_Distributed.ps1` appeared in PowerShell process telemetry on CH-OPS-WKS02 during the suspicious window, distinguishing it from baseline maintenance activity.
+
+**Why it matters:**
+The email scenario frames the investigation around “normal vs. unique.” A host-unique maintenance script is a high-signal pivot because it narrows the hunt to the specific execution chain responsible for downstream network and staging behaviors.
+
+---
+
+### Finding: First Outbound Communication by the Maintenance Script (Flag 2)
+
+```kql
+let start = datetime(2025-11-20);
+let end   = datetime(2025-11-24);
+DeviceNetworkEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where InitiatingProcessAccountName == "ops.maintenance"
+| where InitiatingProcessCommandLine has "MaintenanceRunner_Distributed.ps1"
+| project TimeGenerated, DeviceName, InitiatingProcessAccountName, InitiatingProcessFileName, InitiatingProcessCommandLine, RemoteIP, RemotePort, RemoteUrl, Protocol
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+The first network activity attributable to the maintenance script occurred at the earliest timestamp returned by this query, establishing when the script began communicating off-process.
+
+**Why it matters:**
+The scenario explicitly shifts from “script footprint” to “what it did.” This timestamp becomes the first network pivot in the investigation and marks the beginning of beacon-style behavior.
+
+---
+
+### Finding: Beacon Destination IP and Port (Flag 3)
+
+```kql
+let start = datetime(2025-11-20);
+let end   = datetime(2025-11-24);
+DeviceNetworkEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where InitiatingProcessAccountName == "ops.maintenance"
+| where InitiatingProcessCommandLine has "MaintenanceRunner_Distributed.ps1"
+| project TimeGenerated, DeviceName, InitiatingProcessAccountName, InitiatingProcessFileName, InitiatingProcessCommandLine, RemoteIP, RemotePort, RemoteUrl, Protocol
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+Network telemetry tied to the maintenance script revealed a consistent RemoteIP and RemotePort pairing representing the beacon destination (formatted as `IP:Port`).
+
+**Why it matters:**
+Per the email, this is the first concrete IOC leading off-host. Destination identification enables scoping (other devices contacting the same endpoint) and anchors later “beacon success” validation.
+
+---
+
+### Finding: Latest Successful Beacon Timestamp (Flag 4)
+
+```kql
+let start = datetime(2025-11-20);
+let end   = datetime(2025-12-30);
+DeviceNetworkEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where RemoteIP == "127.0.0.1"
+| where ActionType == "ConnectionSuccess"
+| where InitiatingProcessCommandLine has "MaintenanceRunner_Distributed.ps1"
+| project TimeGenerated, DeviceName, InitiatingProcessAccountName, InitiatingProcessFileName, InitiatingProcessCommandLine, RemoteIP, RemotePort, RemoteUrl, Protocol, ActionType
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+A `ConnectionSuccess` event was recorded for the maintenance script’s network destination, and the newest success timestamp provided the “handshake moment” described in the scenario.
+
+**Why it matters:**
+The email frames this as the pivot point for follow-on staging. A successful outbound connection is the earliest point at which an operator could have interacted with the host through that channel.
+
+---
+
+### Finding: First Primary Staging Artifact Created (Flag 5)
+
+```kql
+let start = datetime(2025-11-23);
+let end   = datetime(2025-12-30);
+DeviceFileEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where InitiatingProcessAccountName == "ops.maintenance"
+| where FolderPath contains "corphealth"
+| where tolower(InitiatingProcessAccountName) !in ("system", "local service", "network service")
+| where ActionType == "FileCreated"
+| order by TimeGenerated asc
+| project TimeGenerated, DeviceName, ActionType, FileName, FolderPath, InitiatingProcessAccountName, InitiatingProcessFileName, InitiatingProcessCommandLine, FileOriginUrl
+```
+
+**Evidence observed:**
+The earliest `FileCreated` event under CorpHealth-related operational paths revealed the first staging artifact created during the attack window, including its full absolute path.
+
+**Why it matters:**
+The scenario explicitly transitions from network activity to “filesystem footprinting.” Identifying the first staged artifact clarifies what the operator prepared as a working output before heavier actions (collection, modification, transfer).
+
+---
+
+### Finding: SHA-256 of the Staged Artifact (Flag 6)
+
+```kql
+let start = datetime(2025-11-23);
+let end   = datetime(2025-12-30);
+DeviceFileEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where InitiatingProcessAccountName == "ops.maintenance"
+| where FolderPath contains "corphealth"
+| where tolower(InitiatingProcessAccountName) !in ("system", "local service", "network service")
+| where ActionType == "FileCreated"
+| order by TimeGenerated asc
+| project TimeGenerated, DeviceName, ActionType, FolderPath, SHA256
+```
+
+**Evidence observed:**
+File event metadata returned the SHA-256 hash associated with the staged artifact, providing a cryptographic fingerprint for the file created under the CorpHealth directory.
+
+**Why it matters:**
+Hashes support integrity validation, allow correlation across endpoints, and enable threat intel comparison. In the scenario’s terms, this is the point where the artifact becomes defensible evidence rather than “just a filename.”
+
+---
+
+### Finding: Duplicate Staging Artifact in Alternate Directory (Flag 7)
+
+```kql
+let start = datetime(2025-11-23);
+let end   = datetime(2025-12-30);
+DeviceFileEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where InitiatingProcessAccountName == "ops.maintenance"
+| where FolderPath contains "corphealth"
+| where tolower(InitiatingProcessAccountName) !in ("system", "local service", "network service")
+| where ActionType == "FileCreated"
+| order by TimeGenerated asc
+| project TimeGenerated, DeviceName, ActionType, FolderPath
+```
+
+**Evidence observed:**
+A second, similarly named “inventory” artifact appeared in a different directory path during the same time horizon, indicating redundant staging behavior.
+
+**Why it matters:**
+The email frames this as an attacker “working copy” pattern. Similar names and timing but different paths strongly suggest intermediate processing or testing what locations are monitored.
+
+---
+
+### Finding: Suspicious Registry Key Activity (Flag 8)
+
+```kql
+let start = datetime(2025-11-23);
+let end   = datetime(2025-12-30);
+DeviceRegistryEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where tolower(InitiatingProcessAccountName) !in ("system", "local service", "network service")
+| where InitiatingProcessAccountName == "ops.maintenance"
+| where InitiatingProcessCommandLine has "powershell"
+| project TimeGenerated, ActionType, DeviceName, RegistryKey, RegistryValueName, RegistryValueData
+| order by TimeGenerated
+```
+
+**Evidence observed:**
+Registry events tied to PowerShell under the `ops.maintenance` context revealed an anomalous key path being created/touched during the credential-harvesting simulation stage.
+
+**Why it matters:**
+The scenario explicitly signals a shift to suspicious HKLM activity. Registry modifications under a normally “silent” operational account are a strong indicator of interactive misuse rather than baseline automation.
+
+---
+
+### Finding: Scheduled Task Persistence via TaskCache Tree (Flag 9)
+
+```kql
+let start = datetime(2025-11-01);
+let end   = datetime(2025-11-30);
+DeviceRegistryEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where RegistryKey contains "TaskCache" and RegistryKey contains "Tree"
+| where ActionType == "RegistryKeyCreated" or ActionType == "RegistryValueSet"
+| order by TimeGenerated
+```
+
+**Evidence observed:**
+The TaskCache Tree registry path showed creation/set activity consistent with a scheduled task being registered during the attack window.
+
+**Why it matters:**
+The email states a scheduled task was created and is not part of approved CorpHealth tasks. Scheduled tasks are durable persistence and frequently appear first through registry telemetry (TaskCache) even when other logging is sparse.
+
+---
+
+### Finding: Ephemeral Run-Key Persistence Attempt (Flag 10)
+
+```kql
+let start = datetime(2025-11-25);
+let end   = datetime(2025-11-30);
+DeviceRegistryEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where tolower(InitiatingProcessAccountName) !in ("system", "local service", "network service")
+| project TimeGenerated, ActionType, DeviceName, RegistryKey, RegistryValueName, PreviousRegistryValueName, RegistryValueData
+| where ActionType == "RegistryKeyCreated" or ActionType == "RegistryValueSet" or ActionType == "RegistryKeyDeleted"
+| where RegistryValueData has "ps1"
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+Registry telemetry showed a Run-key style value associated with a PowerShell script path being created and later removed within the same general period.
+
+**Why it matters:**
+The scenario describes “ephemeral persistence” testing. This add-and-remove pattern is consistent with an operator probing what sticks, triggering once, and attempting to erase traces.
+
+---
+
+### Finding: First ConfigAdjust Privilege Escalation Event (Flag 11)
+
+```kql
+let start = datetime(2025-11-20);
+let end   = datetime(2025-11-30);
+DeviceEvents
+| where DeviceName == "ch-ops-wks02"
+| where TimeGenerated between (start .. end)
+| where InitiatingProcessFileName has "powershell"
+| where AdditionalFields contains "configadjust"
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+An Application-log-derived DeviceEvents record included `configadjust` content in AdditionalFields, with the earliest timestamp representing the first observed privilege-adjustment attempt in the chain.
+
+**Why it matters:**
+The email frames this as the moment the actor probes privilege adjustments prior to riskier steps. This timestamp is a key anchor between registry persistence testing and later tooling ingress.
+
+---
+
+### Finding: AV Exclusion Attempt via PowerShell (Flag 12)
+
+```kql
+let start = datetime(2025-11-20);
+let end   = datetime(2025-12-05);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where tolower(AccountName) !in ("system", "local service", "network service")
+| where DeviceName == "ch-ops-wks02"
+| where InitiatingProcessCommandLine has "powershell" or ProcessCommandLine has "powershell"
+| where ProcessCommandLine contains "Exclusion"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine, FolderPath
+```
+
+**Evidence observed:**
+PowerShell process command lines contained exclusion-related arguments during the intrusion window, indicating an attempt to modify Defender scanning behavior.
+
+**Why it matters:**
+Per the scenario, “weakening host defenses” typically precedes staging and payload execution. Even a failed attempt demonstrates intent and helps explain why an attacker chose certain staging directories.
+
+---
+
+### Finding: PowerShell Encoded Command Execution (Flag 13)
+
+```kql
+let start = datetime(2025-11-20);
+let end   = datetime(2025-12-05);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where tolower(AccountName) !in ("system", "local service", "network service")
+| where DeviceName == "ch-ops-wks02"
+| where InitiatingProcessCommandLine has "powershell" or ProcessCommandLine has "powershell"
+| where ProcessCommandLine contains "encode"
+| project TimeGenerated, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine, FolderPath
+```
+
+**Evidence observed:**
+A PowerShell execution chain included `-EncodedCommand`, and decoding the Base64 payload yielded a plaintext command used to generate a token-like output.
+
+**Why it matters:**
+Encoded commands are a common obfuscation layer. In the scenario, this marks the transition from “maintenance-like scripting” into overt attacker tradecraft intended to hide intent from casual review.
+
+---
+
+### Finding: Token Privilege Modification Initiating ProcessId (Flag 14)
+
+```kql
+let start = datetime(2025-11-23);
+let end   = datetime(2025-12-30);
+DeviceEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where InitiatingProcessCommandLine has "MaintenanceRunner_Distributed.ps1"
+| where AdditionalFields has_any ("tokenChangeDescription", "Privileges were added")
+| project TimeGenerated, DeviceName, ActionType, FileName, FolderPath, InitiatingProcessAccountName, InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessId
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+DeviceEvents captured a token modification record with AdditionalFields describing privilege additions, and the event exposed the initiating process identifier.
+
+**Why it matters:**
+The email describes token modification as a PrivEsc indicator. Identifying the InitiatingProcessId ties the privilege change to a specific execution chain rather than treating it as an isolated “system event.”
+
+---
+
+### Finding: Token SID of Modified Security Principal (Flag 15)
+
+```kql
+let start = datetime(2025-11-23);
+let end   = datetime(2025-12-30);
+DeviceEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where InitiatingProcessCommandLine has "MaintenanceRunner_Distributed.ps1"
+| where AdditionalFields has_any ("tokenChangeDescription", "Privileges were added")
+| project TimeGenerated, DeviceName, ActionType, FileName, FolderPath, InitiatingProcessAccountName, InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessId, userid
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+The token modification event returned the SID (user identifier) for the security principal whose token was modified.
+
+**Why it matters:**
+Attributing token changes to a specific SID clarifies whether the actor modified a low-priv user token or something higher-impact. It materially changes incident severity and scoping decisions.
+
+---
+
+### Finding: Ingress Tool Transfer (Dropped EXE) (Flag 16)
+
+```kql
+let start = datetime(2025-11-23);
+let end   = datetime(2025-12-30);
+DeviceFileEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where InitiatingProcessCommandLine has "curl.exe"
+| where tolower(InitiatingProcessAccountName) !in ("system", "local service", "network service")
+| project TimeGenerated, DeviceName, ActionType, FileName, FolderPath, InitiatingProcessAccountName, InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessId
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+File creation telemetry showed an executable being written to disk in close temporal proximity to curl activity, indicating inbound transfer of tooling.
+
+**Why it matters:**
+The email frames this as the transition from privilege manipulation to staging follow-on tooling. “curl → new .exe write” is a classic ingress pattern and a strong pivot for containment.
+
+---
+
+### Finding: External Download Source (ngrok) (Flag 17)
+
+```kql
+let start = datetime(2025-11-20);
+let end   = datetime(2025-12-30);
+DeviceNetworkEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where InitiatingProcessCommandLine has "curl.exe"
+| project TimeGenerated, DeviceName, InitiatingProcessAccountName, InitiatingProcessFileName, InitiatingProcessCommandLine, RemoteIP, RemotePort, RemoteUrl, Protocol, ActionType
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+Outbound network telemetry initiated by curl.exe contained a long, hyphenated RemoteUrl consistent with a dynamic tunnel domain used to retrieve the payload.
+
+**Why it matters:**
+Identifying the retrieval URL is essential for scoping across devices, blocking future ingress, and documenting external infrastructure used during the intrusion.
+
+---
+
+### Finding: Execution of the Staged Binary (Parent Process) (Flag 18)
+
+```kql
+let start = datetime(2025-11-20);
+let end   = datetime(2025-12-05);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where tolower(AccountName) !in ("system", "local service", "network service")
+| where DeviceName == "ch-ops-wks02"
+| where InitiatingProcessCommandLine has "powershell" or ProcessCommandLine has "powershell"
+| where ProcessCommandLine has "curl"
+| project TimeGenerated, DeviceName, AccountName, FileName, InitiatingProcessParentFileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated desc
+```
+
+**Evidence observed:**
+Process telemetry associated the tool execution chain with a common Windows shell parent process, indicating user-like interactive launch behavior.
+
+**Why it matters:**
+The scenario explicitly notes interactive desktop access (not silent automation). Parent process context helps distinguish “tool executed by user/session” from “tool executed by service/scheduled job.”
+
+---
+
+### Finding: External IP Contacted by the Executable (Flag 19)
+
+```kql
+let start = datetime(2025-11-20);
+let end   = datetime(2025-12-30);
+DeviceNetworkEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where RemotePort == "11746"
+| project TimeGenerated, DeviceName, InitiatingProcessAccountName, InitiatingProcessFileName, InitiatingProcessCommandLine, RemoteIP, RemotePort, RemoteUrl, Protocol, ActionType
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+Network events showed repeated outbound connection attempts to a single external RemoteIP on port 11746, originating from the suspicious executable’s activity window.
+
+**Why it matters:**
+This is the post-ingress command-and-control pivot. A consistent external IP and nonstandard port supports containment actions (block rules, retro-hunt for same destination across endpoints).
+
+---
+
+### Finding: Startup Folder Persistence Placement (Flag 20)
+
+```kql
+let start = datetime(2025-11-23);
+let end   = datetime(2025-12-05);
+DeviceFileEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where FileName contains "exe"
+| where FolderPath contains "start"
+| project TimeGenerated, DeviceName, ActionType, FileName, FolderPath, InitiatingProcessAccountName, InitiatingProcessFileName, InitiatingProcessCommandLine, InitiatingProcessId
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+A file event recorded an executable being written into a Windows Startup directory path, consistent with logon-triggered persistence.
+
+**Why it matters:**
+The scenario calls out Startup folder placement as a persistence mechanism. This confirms intent to survive reboots/logons and upgrades the incident from “suspicious maintenance” to durable compromise behavior.
+
+---
+
+### Finding: Remote Session Metadata (Device Label + Source IP) (Flags 21–22)
+
+```kql
+let start = datetime(2025-11-20);
+let end   = datetime(2025-12-30);
+DeviceNetworkEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where InitiatingProcessCommandLine has "curl.exe"
+| project TimeGenerated, DeviceName, InitiatingProcessAccountName, InitiatingProcessFileName, InitiatingProcessCommandLine, RemoteIP, RemotePort, RemoteUrl, Protocol, ActionType, InitiatingProcessRemoteSessionIP, InitiatingProcessRemoteSessionDeviceName
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+Multiple suspicious events shared consistent remote session metadata, including a stable remote session device label and a stable remote session IP value.
+
+**Why it matters:**
+The email frames this as proof of interactive remote access rather than local console use. Remote session metadata becomes a high-value pivot for linking process/file/network actions to the same operator presence.
+
+---
+
+### Finding: Internal Pivot Host Observed in Session Metadata (Flag 23)
+
+```kql
+let start = datetime(2025-11-20);
+let end   = datetime(2025-12-30);
+DeviceNetworkEvents
+| where TimeGenerated between (start .. end)
+| where DeviceName == "ch-ops-wks02"
+| where tolower(InitiatingProcessAccountName) !in ("system", "local service", "network service")
+| project TimeGenerated, DeviceName, InitiatingProcessAccountName, InitiatingProcessFileName, InitiatingProcessCommandLine, RemoteIP, RemotePort, RemoteUrl, Protocol, ActionType, InitiatingProcessRemoteSessionIP, InitiatingProcessRemoteSessionDeviceName
+| distinct InitiatingProcessRemoteSessionIP
+```
+
+**Evidence observed:**
+Session metadata contained multiple RemoteSessionIP values, including an internal 10.x.x.x address consistent with an internal hop/pivot.
+
+**Why it matters:**
+The scenario explicitly raises the possibility of an internal pivot host. Identifying an internal RemoteSessionIP supports lateral movement scoping and investigation of upstream compromise.
+
+---
+
+### Finding: Earliest Suspicious Logon Timestamp (Flag 24)
+
+```kql
+let start = datetime(2025-11-20);
+let end   = datetime(2025-11-30);
+DeviceLogonEvents
+| where DeviceName == "ch-ops-wks02"
+| where TimeGenerated between (start .. end)
+| where LogonType contains "network"
+| where isnotempty(RemoteIP)
+| where RemoteIPType == "Public"
+| where ActionType == "LogonSuccess"
+| where tolower(InitiatingProcessAccountName) !in ("system", "local service", "network service")
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+The earliest `LogonSuccess` event with a public RemoteIP established the first confirmed attacker foothold time on the endpoint.
+
+**Why it matters:**
+The email frames this as “the true beginning.” This timestamp anchors the entire timeline reconstruction and prevents later-stage artifacts from being misinterpreted as initial access.
+
+---
+
+### Finding: RemoteIP Used for Earliest Suspicious Logon (Flag 25)
+
+```kql
+let start = datetime(2025-11-20);
+let end   = datetime(2025-11-30);
+DeviceLogonEvents
+| where DeviceName == "ch-ops-wks02"
+| where TimeGenerated between (start .. end)
+| where LogonType contains "network"
+| where isnotempty(RemoteIP)
+| where RemoteIPType == "Public"
+| where ActionType == "LogonSuccess"
+| where tolower(InitiatingProcessAccountName) !in ("system", "local service", "network service")
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+The same earliest suspicious logon record included a public RemoteIP value associated with the initial access event.
+
+**Why it matters:**
+This is the start of the intrusion path. It enables enrichment, blocking, and scoping for other authentication activity originating from the same infrastructure.
+
+---
+
+### Finding: Account Used for Earliest Suspicious Logon (Flag 26)
+
+```kql
+let start = datetime(2025-11-20);
+let end   = datetime(2025-11-30);
+DeviceLogonEvents
+| where DeviceName == "ch-ops-wks02"
+| where TimeGenerated between (start .. end)
+| where LogonType contains "network"
+| where isnotempty(RemoteIP)
+| where RemoteIPType == "Public"
+| where ActionType == "LogonSuccess"
+| where tolower(InitiatingProcessAccountName) !in ("system", "local service", "network service")
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+The earliest suspicious logon event identified the AccountName used to authenticate during initial access.
+
+**Why it matters:**
+Account attribution is core to containment. Knowing which credentials were used informs credential reset scope, privileged access review, and whether the attack chain likely involved stolen operational/admin credentials.
+
+---
+
+### Finding: Geolocation Enrichment of Suspicious RemoteIP (Flag 27)
+
+```kql
+print geo = geo_info_from_ip_address("104.164.168.17")
+```
+
+**Evidence observed:**
+Geo enrichment returned a consistent country/region and city associated with the suspicious IP, providing geographic context for the attacker’s origin.
+
+**Why it matters:**
+The scenario explicitly requests region attribution without external OSINT tools. Geo enrichment supports reporting, triage context, and correlation against other activity from the same region/provider range.
+
+---
+
+### Finding: First Process Executed After Initial Access (Flag 28)
+
+```kql
+let start = datetime(2025-11-23);
+let end   = datetime(2025-11-25);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where tolower(AccountName) !in ("system", "local service", "network service")
+| where DeviceName == "ch-ops-wks02"
+| where AccountName == "chadmin"
+| project TimeGenerated, DeviceName, AccountName, FileName, InitiatingProcessParentFileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+The earliest post-logon process executions under the initial compromised account showed the first process launched during the attacker session.
+
+**Why it matters:**
+The email frames this as intent discovery. The first process provides immediate insight into whether the actor began with exploration, tooling, or environment validation.
+
+---
+
+### Finding: First File Accessed in the Session (Flag 29)
+
+```kql
+let start = datetime(2025-11-23);
+let end   = datetime(2025-11-25);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where tolower(AccountName) !in ("system", "local service", "network service")
+| where DeviceName == "ch-ops-wks02"
+| where AccountName == "chadmin"
+| project TimeGenerated, DeviceName, AccountName, FileName, InitiatingProcessParentFileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+A GUI-driven process execution chain referenced the first file opened in the session, exposing an early access target aligned to credential discovery.
+
+**Why it matters:**
+The email calls this a priority indicator. Early file access often reveals goals (credentials/config), and it helps explain subsequent account usage and persistence attempts.
+
+---
+
+### Finding: Next Action After File Read (Recon Kickoff) (Flag 30)
+
+```kql
+let start = datetime(2025-11-23);
+let end   = datetime(2025-11-25);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where tolower(AccountName) !in ("system", "local service", "network service")
+| where DeviceName == "ch-ops-wks02"
+| where AccountName == "chadmin"
+| project TimeGenerated, DeviceName, AccountName, FileName, InitiatingProcessParentFileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+Immediately after the file-viewing activity, the next processes executed under the same session reflected the attacker’s next step (recon/validation), identifiable by the next FileName in the ordered output.
+
+**Why it matters:**
+The scenario frames this as “how did they leverage what they read.” Confirming the next action bridges the chain from credential access into active host enumeration.
+
+---
+
+### Finding: Next Account Accessed After Initial Enumeration (Flag 31)
+
+```kql
+let start = datetime('2025-11-23T03:11:00.6981995Z');
+let end   = datetime(2025-11-25);
+DeviceProcessEvents
+| where TimeGenerated between (start .. end)
+| where tolower(AccountName) !in ("system", "local service", "network service")
+| where DeviceName == "ch-ops-wks02"
+| project TimeGenerated, DeviceName, AccountName, FileName, InitiatingProcessParentFileName, ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by TimeGenerated asc
+```
+
+**Evidence observed:**
+Process telemetry in the immediate post-enumeration window showed activity under a different account context, indicating a transition from the initial account to another user account.
+
+**Why it matters:**
+The email frames this as the point where the intrusion shifts from discovery to account-level interaction. Account switching is a key indicator of credential testing, lateral prep, or escalation in access.
+
+</details>
