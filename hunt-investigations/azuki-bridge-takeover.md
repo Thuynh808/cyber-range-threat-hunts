@@ -3,8 +3,8 @@
 # Threat Hunt Report - Bridge Takeover
 
 - **Hunt Name:** Bridge Takeover - Azuki Import/Export
-- **Author:** [Your Name]
-- **Date:** 2025-11-25
+- **Author:** Thong Huynh
+- **Date:** 2026-02-13
 - **Environment:** Microsoft Defender for Endpoint
 - **Hunt Type:** Hypothesis-Driven Threat Hunt
 - **Severity:** Critical (Confirmed Data Exfiltration and Persistence)
