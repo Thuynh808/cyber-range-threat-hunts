@@ -1,3 +1,5 @@
+![deadinthewater](images/deadinthewater0.png)
+
 # Threat Hunt Report - Dead in the Water
 
 - **Hunt Name:** Dead in the Water - Azuki Ransomware
